@@ -47,6 +47,11 @@ var cred credentials
 // Handler Serverless Exported Function
 func Handler(w http.ResponseWriter, r *http.Request) {
 
+	if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	ctx := context.Background()
 
 	cred, err := getCredentials()
@@ -58,18 +63,26 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
-		log.Fatalf("%v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	db, err := app.Firestore(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	err = json.NewDecoder(r.Body).Decode(&rev)
+
+	if len(rev.UID) < 1 {
+		http.Error(w, "No UID Provided", http.StatusBadRequest)
+		return
+	}
+
 	if err != nil {
 		http.Error(w, "Body Error"+err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	score := math.Round(rev.Score*10) / 10
